@@ -1,0 +1,43 @@
+---
+title: "Retinalogik vs HFA study"
+author: "[Eadie Technologies, Inc.](https://www.eadietech.com/)"
+date: "2025-02-07"
+output: 
+  html_document:
+    theme: yeti
+    code_folding: hide
+    toc: true
+    toc_depth: 2
+    toc_float: 
+      collapsed: true
+
+---
+
+## Setup
+
+### Versioning
+
+Last updated on `r format(Sys.time(), '%Y-%b-%d')` at `r format(Sys.time(), '%I:%M %p')`.
+
+* 2025-Feb-07: Created git & RStudio project
+
+### Acknowledgements
+Data collected by Research Assistants Hailey Burns, Kyle McVea, and Carol Thomas.
+
+# Study summary
+We compared GSR data with reliability measures in healthy controls and patients with glaucoma.
+
+# Methods (briefly)
+## Subjects
+
+Eligible participants were identified among patients of Dr. Brennan Eadie at the Eadie Eye Centre. If deemed eligible for the study, subjects were recruited consecutively.
+
+Each participant underwent 5 study visits, whereupon they performed a VF test on both eyes and on both devices, with the order of devices randomized during the baseline 1st study visit.
+
+The study adhered to the tenets of the Declaration of Helsinki for research involving human subjects and the protocol was approved by the Nova Scotia Health Research Ethics Board (#1030608). All participants gave their written informed consent before enrollment in the study.
+
+## Analysis
+
+# Results
+
+# Discussion
