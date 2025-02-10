@@ -10,7 +10,8 @@ output:
     toc_depth: 2
     toc_float: 
       collapsed: true
-
+    includes:
+        after_body: footer.html
 ---
 
 ## Setup
@@ -20,23 +21,217 @@ output:
 Last updated on `r format(Sys.time(), '%Y-%b-%d')` at `r format(Sys.time(), '%I:%M %p')`.
 
 * 2025-Feb-07: Created git & RStudio project
+* 2025-Feb-10: Added raw and filtered plots
 
 ### Acknowledgements
 Data collected by Research Assistants Hailey Burns, Kyle McVea, and Carol Thomas.
 
+```{r setup, collapse=TRUE}
+
+# load packages
+library(tidyverse)
+library(here)
+library(DT)
+library(plotly)
+library(viridis)
+library(svglite)
+library(htmltools)
+library(signal) # For butterworth filter
+
+sessionInfo()
+
+# default chunk options
+knitr::opts_chunk$set(
+  comment = '>', cache = TRUE, collapse = TRUE, cache = FALSE, dev= c("png")
+  )
+
+# load processed data
+#load(here("dBdat.Rda"))
+
+```
+
 # Study summary
-We compared GSR data with reliability measures in healthy controls and patients with glaucoma.
+We examined GSR data in healthy controls while participants were doing a visual field test (VFT).
 
 # Methods (briefly)
 ## Subjects
 
-Eligible participants were identified among patients of Dr. Brennan Eadie at the Eadie Eye Centre. If deemed eligible for the study, subjects were recruited consecutively.
+Eligible participants were identified among patients of Dr. Brennan Eadie at the Halifax Vision Centre. If deemed eligible for the study, subjects were recruited consecutively.
 
-Each participant underwent 5 study visits, whereupon they performed a VF test on both eyes and on both devices, with the order of devices randomized during the baseline 1st study visit.
+Each participant underwent 3 study visits, whereupon they performed a VF test on the eligible eye.
 
-The study adhered to the tenets of the Declaration of Helsinki for research involving human subjects and the protocol was approved by the Nova Scotia Health Research Ethics Board (#1030608). All participants gave their written informed consent before enrollment in the study.
+The study adhered to the tenets of the Declaration of Helsinki for research involving human subjects and the protocol was approved by the Nova Scotia Health Research Ethics Board (#1027265). All participants gave their written informed consent before enrollment in the study.
 
 ## Analysis
+Not part of this analysis are datasets from:
+
+* healthy participants using neutral density filter 
+* patients with glaucoma
+
+Also not looking at heart rate, BP, questionnaire data right now.
+
+# Plots
+## Raw GSR data
+```{r plots, warning=FALSE}
+df <- tibble(files = list.files(path = "data", pattern = "csv", full.names = T)) %>%
+    mutate(dfs = map(files, read_csv, skip = 7, col_names=F, show_col_types=FALSE))
+
+plot_list <- lapply(1:nrow(df), function(i) {
+  data <- df$dfs[[i]]
+  
+  # Rename columns for clarity (assuming they are currently unnamed)
+  colnames(data) <- c("timestamp", "heart_rate", "gsr") 
+  
+  # data$timestamp <- trimws(data$timestamp)
+  data$timestamp <- gsub("^'|'$", "", data$timestamp) # Match start/end quotes
+  data$timestamp <- gsub("^-", "", data$timestamp)
+  
+  data$timestamp_duration <- lubridate::hms(data$timestamp)
+  
+   # 4. Convert to numeric (seconds):
+  data$timestamp_duration <- as.numeric(data$timestamp_duration)
+  
+  # Create the plot
+  ggplot(data, aes(x = timestamp_duration)) +
+    # geom_line(aes(y = heart_rate, color = "Heart Rate")) +
+    geom_line(aes(y = gsr)) +
+    labs(title = df$files[i], 
+         x = "Time (s)", 
+         y = "GSR (uS)") +
+    theme_minimal() 
+})
+
+# walk(plot_list, print)
+
+# Convert ggplot objects to plotly objects:
+plot_list_plotly <- lapply(plot_list, ggplotly)
+
+# Create the scrolling container:
+scrolling_container <- htmltools::tags$div(
+  style = "overflow-x: scroll; white-space: nowrap; width: 100%;" # Key styles
+)
+
+# Add each plot to the scrolling container:
+for (i in 1:length(plot_list_plotly)) {
+  scrolling_container$children[[i]] <- htmltools::div(
+    style = "display: inline-block; margin-right: 10px;", # Inline and spacing
+    plot_list_plotly[[i]]
+  )
+}
+
+# Display the scrolling container:
+scrolling_container
+```
+
+## Filtered GSR data
+Plots with 1 Hz lowpass filter and moving average filter applied.
+```{r filteredplots, warnings=FALSE}
+
+# Function to apply lowpass filter:
+lowpass_filter <- function(data, cutoff_freq, sample_rate) {
+  # Normalize cutoff frequency (Nyquist frequency is 0.5)
+  cutoff_normalized <- cutoff_freq / (sample_rate / 2)
+
+  # Butterworth filter design (adjust order as needed)
+  bf <- butter(2, cutoff_normalized, type = "low") # 2nd order filter
+
+  # Apply filter to gsr data
+  filtered_gsr <- filtfilt(bf, data$gsr) # Zero-phase filtering
+
+  return(filtered_gsr)
+}
+
+# Function to apply moving average filter:
+moving_average_filter <- function(data, window_size) {
+  data_length <- length(data$gsr)
+
+  # Check if window_size is odd
+  if (window_size %% 2 == 0) {
+    warning("window_size was even. Adjusting to the nearest odd number.")
+    window_size <- window_size + 1  # Make it odd
+  }
+
+  # Check if window_size is smaller than or equal to data length
+  if (window_size >= data_length) {
+    warning("window_size is larger than or equal to data length. Reducing window size.")
+    window_size <- data_length - (data_length %% 2) # Largest odd number less than data length
+  }
+
+  # Now, window_size is GUARANTEED to be odd and LESS THAN data_length
+
+  ma_filter <- rep(1/window_size, window_size)
+
+  # Use 'filter' from the 'stats' package with 'sides = 2' (centered moving average):
+  filtered_data <- stats::filter(data$gsr, ma_filter, sides = 2)
+
+  # Handle edge cases by replicating the edge values (same as before):
+  half_window <- (window_size - 1) / 2
+  filtered_data[1:half_window] <- filtered_data[half_window + 1] # Replicate left edge
+  filtered_data[(data_length - half_window + 1):data_length] <- filtered_data[data_length - half_window] # Replicate right edge
+
+  return(filtered_data)
+}
+
+# Loop through plot_list, apply filter, and create plots:
+plot_list_filtered <- lapply(1:nrow(df), function(i) {
+  data <- df$dfs[[i]]
+  
+  data <- na.omit(data)
+
+  # Rename columns for clarity (assuming they are currently unnamed)
+  colnames(data) <- c("timestamp", "heart_rate", "gsr") 
+  
+  # data$timestamp <- trimws(data$timestamp)
+  data$timestamp <- gsub("^'|'$", "", data$timestamp) # Match start/end quotes
+  data$timestamp <- gsub("^-", "", data$timestamp)
+  
+  data$timestamp_duration <- lubridate::hms(data$timestamp)
+  
+   # 4. Convert to numeric (seconds):
+  data$timestamp_duration <- as.numeric(data$timestamp_duration)
+
+  # Filter the GSR data:
+  sample_rate <- 10 # Example sample rate (adjust to your data)
+  cutoff_freq <- 1 # Example cutoff frequency (1 Hz)
+
+  filtered_gsr_lowpass <- lowpass_filter(data, cutoff_freq, sample_rate)
+  data$gsr_filtered_lowpass <- filtered_gsr_lowpass
+
+  # Filter the GSR data (moving average):
+  window_size <- 3 # Example window size (adjust as needed; must be odd)
+
+  filtered_gsr_ma <- moving_average_filter(data, window_size)
+  data$gsr_filtered_ma <- filtered_gsr_ma
+
+  # Create the plotly plot with all three lines:
+  p <- plot_ly(data, x = ~timestamp_duration) %>%
+    add_trace(y = ~gsr, type = "scatter", mode = "lines", name = "Original GSR", color = I("#F8766D")) %>%
+    add_trace(y = ~gsr_filtered_lowpass, type = "scatter", mode = "lines", name = "Lowpass Filtered GSR", color = I("#619CFF")) %>%
+    add_trace(y = ~gsr_filtered_ma, type = "scatter", mode = "lines", name = "Moving Average Filtered GSR", color = I("#00BA38")) %>%
+    layout(title = df$files[i],
+           xaxis = list(title = "Time (s)"),
+           yaxis = list(title = "GSR (uS)"))
+
+  p # Return the plotly plot
+})
+
+# Create the scrolling container (same as before):
+scrolling_container <- htmltools::tags$div(
+  style = "overflow-x: scroll; white-space: nowrap; width: 100%;"
+)
+
+# Add each plot to the scrolling container:
+for (i in 1:length(plot_list_filtered)) {
+  scrolling_container$children[[i]] <- htmltools::div(
+    style = "display: inline-block; margin-right: 10px;",
+    plot_list_filtered[[i]]
+  )
+}
+
+# Display the scrolling container:
+scrolling_container
+
+```
 
 # Results
 
