@@ -1,5 +1,5 @@
 ---
-title: "Retinalogik vs HFA study"
+title: "GSR study"
 author: "[Eadie Technologies, Inc.](https://www.eadietech.com/)"
 date: "2025-02-07"
 output: 
