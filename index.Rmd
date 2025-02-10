@@ -126,7 +126,7 @@ scrolling_container
 ```
 
 ## Filtered GSR data
-Plots with 1 Hz lowpass filter and moving average filter applied.
+Plots with 2 Hz lowpass filter and moving average filter applied.
 ```{r filteredplots, warnings=FALSE}
 
 # Function to apply lowpass filter:
@@ -135,7 +135,7 @@ lowpass_filter <- function(data, cutoff_freq, sample_rate) {
   cutoff_normalized <- cutoff_freq / (sample_rate / 2)
 
   # Butterworth filter design (adjust order as needed)
-  bf <- butter(2, cutoff_normalized, type = "low") # 2nd order filter
+  bf <- butter(3, cutoff_normalized, type = "low") # 2nd order filter
 
   # Apply filter to gsr data
   filtered_gsr <- filtfilt(bf, data$gsr) # Zero-phase filtering
@@ -194,13 +194,13 @@ plot_list_filtered <- lapply(1:nrow(df), function(i) {
 
   # Filter the GSR data:
   sample_rate <- 10 # Example sample rate (adjust to your data)
-  cutoff_freq <- 1 # Example cutoff frequency (1 Hz)
+  cutoff_freq <- 2 # Example cutoff frequency (1 Hz)
 
   filtered_gsr_lowpass <- lowpass_filter(data, cutoff_freq, sample_rate)
   data$gsr_filtered_lowpass <- filtered_gsr_lowpass
 
   # Filter the GSR data (moving average):
-  window_size <- 3 # Example window size (adjust as needed; must be odd)
+  window_size <- 5 # Example window size (adjust as needed; must be odd)
 
   filtered_gsr_ma <- moving_average_filter(data, window_size)
   data$gsr_filtered_ma <- filtered_gsr_ma
