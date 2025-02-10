@@ -72,6 +72,8 @@ Also not looking at heart rate, BP, questionnaire data right now.
 
 # Plots
 ## Raw GSR data
+Best viewed on a computer screen. Scroll or swipe (if you're on mobile) from right to left to view the next plot.
+
 ```{r plots, warning=FALSE}
 df <- tibble(files = list.files(path = "data", pattern = "csv", full.names = T)) %>%
     mutate(dfs = map(files, read_csv, skip = 7, col_names=F, show_col_types=FALSE))
