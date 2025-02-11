@@ -126,7 +126,7 @@ scrolling_container
 ```
 
 ## Filtered GSR data
-Plots with 2 Hz lowpass filter and moving average filter applied.
+Plots with 1.99 Hz lowpass filter and moving average filter applied.
 ```{r filteredplots, warnings=FALSE}
 
 # Function to apply lowpass filter:
@@ -194,7 +194,7 @@ plot_list_filtered <- lapply(1:nrow(df), function(i) {
 
   # Filter the GSR data:
   sample_rate <- 10 # Example sample rate (adjust to your data)
-  cutoff_freq <- 2 # Example cutoff frequency (1 Hz)
+  cutoff_freq <- 1.99 # Example cutoff frequency (1 Hz)
 
   filtered_gsr_lowpass <- lowpass_filter(data, cutoff_freq, sample_rate)
   data$gsr_filtered_lowpass <- filtered_gsr_lowpass
@@ -207,7 +207,7 @@ plot_list_filtered <- lapply(1:nrow(df), function(i) {
 
   # Create the plotly plot with all three lines:
   p <- plot_ly(data, x = ~timestamp_duration) %>%
-    add_trace(y = ~gsr, type = "scatter", mode = "lines", name = "Original GSR", color = I("#F8766D")) %>%
+    add_trace(y = ~gsr, type = "scatter", mode = "lines", name = "Original raw GSR", color = I("#F8766D")) %>%
     add_trace(y = ~gsr_filtered_lowpass, type = "scatter", mode = "lines", name = "Lowpass Filtered GSR", color = I("#619CFF")) %>%
     add_trace(y = ~gsr_filtered_ma, type = "scatter", mode = "lines", name = "Moving Average Filtered GSR", color = I("#00BA38")) %>%
     layout(title = df$files[i],
